@@ -21,6 +21,7 @@ For instructions on how to forward the API endpoint using Nginx Proxy Manager, r
 
 ## Links
 
+- [Scriptable](https://scriptable.app/)
 - [OpenDTU](https://github.com/tbnobody/OpenDTU)
 - [Tasmota](https://tasmota.github.io/docs/)
 - [Hichi Reader](https://www.ebay.de/itm/314152997777) to read the values from my power meter
