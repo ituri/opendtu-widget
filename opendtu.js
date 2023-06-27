@@ -35,7 +35,7 @@ async function fetchData(apiUrl, username, password) {
 }
 
 // Create widget
-async function createWidget(data, powerDrawData) {
+async function createWidget(data, powerDrawData, widgetSize) {
   let widget = new ListWidget();
 
   // Define gradient background color
@@ -89,14 +89,16 @@ async function createWidget(data, powerDrawData) {
   yieldDayText.textColor = Color.white();
   yieldDayText.font = Font.systemFont(13);
 
+  let rightStack;
   if (showPowerDraw) {
-    let rightStack = gridStack.addStack();
+    rightStack = gridStack.addStack();
     rightStack.layoutVertically();
     let powerDrawDataValue = powerDrawData.StatusSNS[""]["current"];
 
     let powerDrawLabel = rightStack.addText(`Power Draw: `);
     powerDrawLabel.textColor = Color.white();
     powerDrawLabel.font = Font.systemFont(8);
+
     let powerDrawText = rightStack.addText(`${powerDrawDataValue} W`);
     powerDrawText.font = Font.systemFont(13);
     // Adjust color based on power draw value
@@ -107,11 +109,33 @@ async function createWidget(data, powerDrawData) {
     }
   }
 
+  // Check the widget size outside the 'showPowerDraw' condition
+  if (widgetSize == "medium") {
+    if (!rightStack) {
+      // If rightStack does not exist, create it
+      rightStack = gridStack.addStack();
+      rightStack.layoutVertically();
+    }
+    // Include additional data for medium-sized widget
+    let dcData = data.inverters[0].DC;
+    for (let key in dcData) {
+      let dcLabel = rightStack.addText(`${dcData[key].name.u}: `);
+      dcLabel.textColor = Color.white();
+      dcLabel.font = Font.systemFont(8);
+
+      let dcPowerValue = parseFloat(dcData[key].Power.v).toFixed(2); // Convert the DC power value to a float and then to a string with 2 decimal places
+
+      let dcText = rightStack.addText(`${dcPowerValue} W`);
+      dcText.textColor = Color.white();
+      dcText.font = Font.systemFont(13);
+    }
+  }
+
   let yieldTotalLabel = leftStack.addText(`Yield Total: `);
   yieldTotalLabel.textColor = Color.white();
   yieldTotalLabel.font = Font.systemFont(8);
 
-  let yieldTotalText = leftStack.addText(`${yieldTotalData} kWh`);
+  let yieldTotalText = leftStack.addText(`${yieldTotalData} kWh  `);
   yieldTotalText.textColor = Color.white();
   yieldTotalText.font = Font.systemFont(13);
 
@@ -135,18 +159,25 @@ async function createWidget(data, powerDrawData) {
 async function run() {
   let data = await fetchData(dtuApiUrl, dtuUser, dtuPass);
   let powerDrawData = showPowerDraw
-    ? await fetchData(tasmotaApiUrl, tasmotaUser, tasmotaPass)
+    ? await fetchData(tasmotaApiUrl, powerUser, powerPass)
     : null;
   if (!data || (showPowerDraw && !powerDrawData)) {
     console.error("Could not fetch data");
     return;
   }
 
-  let widget = await createWidget(data, powerDrawData);
+  let widgetSize = config.runsInWidget ? config.widgetFamily : "small";
+  let widget = await createWidget(data, powerDrawData, widgetSize);
   if (config.runsInWidget) {
     Script.setWidget(widget);
   } else {
-    widget.presentSmall();
+    if (widgetSize == "small") {
+      widget.presentSmall();
+    } else if (widgetSize == "medium") {
+      widget.presentMedium();
+    } else {
+      widget.presentLarge();
+    }
   }
   Script.complete();
 }
