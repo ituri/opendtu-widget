@@ -2,7 +2,11 @@
 
 This is a simple widget for Scriptable that displays current data from your OpenDTU.
 
-![](screenshot-power-draw.jpg)
+![Small widget](screenshot-power-draw.jpg)
+_Small widget_
+
+![Medium-sized widget](screenshot-medium.jpg)
+_Medium widget_
 
 ## Setup
 
