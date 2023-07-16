@@ -2,17 +2,24 @@ const dtuApiUrl = "http://change-me/api/livedata/status"; // API endpoint for Op
 const dtuUser = "changeme"; // replace with actual username for dtuApiUrl
 const dtuPass = "changeme"; // replace with actual password for dtuApiUrl
 
+const powermeter = "tasmota"; // Choose between "tasmota" or "shelly"
+
+// Tasmota configuration
 const tasmotaApiUrl = "http://change-me/cm?cmnd=status%208"; // API endpoint for Tasmota
 const tasmotaUser = "changeme"; // replace with actual username for tasmotaApiUrl
 const tasmotaPass = "changeme"; // replace with actual password for tasmotaApiUrl
 
-const showPowerDraw = 1; // 1 for showing powerdraw, 0 for not showing
-const powerDrawThreshold = 0; // Threshold for power draw color change
+// Shelly configuration
+const shellyApiUrl = "https://change-me/"; // API endpoint for Shelly
+const shellyUser = "changeme"; // replace with actual username for shellyApiUrl
+const shellyPass = "changeme"; // replace with actual password for shellyApiUrl
 
-// Define color thresholds for Power value
-const redThreshold = 220; // Basic load
-const yellowThreshold = 260; // Threshold where there's enough production to add more consumers
-const greenThreshold = 400; // Point where we feed in
+const showPowerDraw = 0;
+const powerDrawThreshold = 0;
+
+const redThreshold = 220;
+const yellowThreshold = 260;
+const greenThreshold = 400;
 
 // Fetch data from the API
 async function fetchData(apiUrl, username, password) {
@@ -34,6 +41,30 @@ async function fetchData(apiUrl, username, password) {
   }
 }
 
+// Helper function to retrieve power draw value from the API response
+function getPowerDrawValue(powerDrawData) {
+  if (powermeter === "tasmota") {
+    // Handle Tasmota API response structure
+    if (
+      powerDrawData &&
+      powerDrawData.StatusSNS &&
+      powerDrawData.StatusSNS.hasOwnProperty("")
+    ) {
+      return parseFloat(powerDrawData.StatusSNS[""]["current"]) || 0;
+    }
+  } else if (powermeter === "shelly") {
+    // Handle Shelly API response structure
+    if (
+      powerDrawData &&
+      powerDrawData.meters &&
+      powerDrawData.meters.length > 0
+    ) {
+      return parseFloat(powerDrawData.meters[0].power) || 0;
+    }
+  }
+  return 0;
+}
+
 // Create widget
 async function createWidget(data, powerDrawData) {
   let widget = new ListWidget();
@@ -50,13 +81,9 @@ async function createWidget(data, powerDrawData) {
   title.textColor = Color.white();
   title.font = Font.boldSystemFont(16);
 
-  let powerData = parseFloat(data.inverters[0].AC["0"].Power.v);
-  let yieldDayData = (
-    parseFloat(data.inverters[0].AC["0"].YieldDay.v) / 1000
-  ).toFixed(2); // Convert Wh to kWh
-  let yieldTotalData = parseFloat(
-    data.inverters[0].AC["0"].YieldTotal.v
-  ).toFixed(2);
+  let powerData = parseFloat(data.total.Power.v); // Update powerData to use Shelly API response
+  let yieldDayData = (parseFloat(data.total.YieldDay.v) / 1000).toFixed(2); // Convert Wh to kWh
+  let yieldTotalData = parseFloat(data.total.YieldTotal.v).toFixed(2);
 
   widget.addSpacer(2); // Add some space between title and data
 
@@ -92,12 +119,16 @@ async function createWidget(data, powerDrawData) {
   if (showPowerDraw) {
     let rightStack = gridStack.addStack();
     rightStack.layoutVertically();
-    let powerDrawDataValue = powerDrawData.StatusSNS[""]["current"];
+    let powerDrawDataValue = powerDrawData
+      ? parseFloat(getPowerDrawValue(powerDrawData))
+      : 0;
 
     let powerDrawLabel = rightStack.addText(`Power Draw: `);
     powerDrawLabel.textColor = Color.white();
     powerDrawLabel.font = Font.systemFont(8);
-    let powerDrawText = rightStack.addText(`${powerDrawDataValue} W`);
+    let powerDrawText = rightStack.addText(
+      `${powerDrawDataValue.toFixed(2)} W`
+    );
     powerDrawText.font = Font.systemFont(13);
     // Adjust color based on power draw value
     if (powerDrawDataValue > powerDrawThreshold) {
@@ -135,9 +166,17 @@ async function createWidget(data, powerDrawData) {
 async function run() {
   try {
     let data = await fetchData(dtuApiUrl, dtuUser, dtuPass);
-    let powerDrawData = showPowerDraw
-      ? await fetchData(tasmotaApiUrl, tasmotaUser, tasmotaPass)
-      : null;
+    let powerDrawData = null;
+
+    if (powermeter === "tasmota") {
+      powerDrawData = showPowerDraw
+        ? await fetchData(tasmotaApiUrl, tasmotaUser, tasmotaPass)
+        : null;
+    } else if (powermeter === "shelly") {
+      powerDrawData = showPowerDraw
+        ? await fetchData(shellyApiUrl, shellyUser, shellyPass)
+        : null;
+    }
 
     let widget = await createWidget(data, powerDrawData);
     if (config.runsInWidget) {
