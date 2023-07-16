@@ -15,7 +15,6 @@ const greenThreshold = 400;
 
 async function fetchData(apiUrl, username, password) {
   let request = new Request(apiUrl);
-  t;
   const auth = `${username}:${password}`;
   const base64Auth = btoa(auth);
   request.headers = {
