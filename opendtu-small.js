@@ -133,22 +133,30 @@ async function createWidget(data, powerDrawData) {
 
 // Main script
 async function run() {
-  let data = await fetchData(dtuApiUrl, dtuUser, dtuPass);
-  let powerDrawData = showPowerDraw
-    ? await fetchData(tasmotaApiUrl, powerUser, powerPass)
-    : null;
-  if (!data || (showPowerDraw && !powerDrawData)) {
-    console.error("Could not fetch data");
-    return;
-  }
+  try {
+    let data = await fetchData(dtuApiUrl, dtuUser, dtuPass);
+    let powerDrawData = showPowerDraw
+      ? await fetchData(tasmotaApiUrl, powerUser, powerPass)
+      : null;
 
-  let widget = await createWidget(data, powerDrawData);
-  if (config.runsInWidget) {
-    Script.setWidget(widget);
-  } else {
-    widget.presentSmall();
+    let widget = await createWidget(data, powerDrawData);
+    if (config.runsInWidget) {
+      Script.setWidget(widget);
+    } else {
+      widget.presentSmall();
+    }
+    Script.complete();
+  } catch (error) {
+    console.error(error.message);
+    let widget = new ListWidget();
+    widget.addText("Error: Unable to connect to powermeter");
+    if (config.runsInWidget) {
+      Script.setWidget(widget);
+    } else {
+      widget.presentSmall();
+    }
+    Script.complete();
   }
-  Script.complete();
 }
 
 run();
