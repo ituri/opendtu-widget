@@ -4,7 +4,7 @@ const dtuPass = "changeme"; // replace with actual password for dtuApiUrl
 
 const tasmotaApiUrl = "http://change-me/cm?cmnd=status%208"; // API endpoint for Tasmota
 const tasmotaUser = "changeme"; // replace with actual username for tasmotaApiUrl
-const tasmotarPass = "changeme"; // replace with actual password for tasmotaApiUrl
+const tasmotaPass = "changeme"; // replace with actual password for tasmotaApiUrl
 
 const showPowerDraw = 1; // 1 for showing powerdraw, 0 for not showing
 const powerDrawThreshold = 0; // Threshold for power draw color change
@@ -136,7 +136,7 @@ async function run() {
   try {
     let data = await fetchData(dtuApiUrl, dtuUser, dtuPass);
     let powerDrawData = showPowerDraw
-      ? await fetchData(tasmotaApiUrl, powerUser, powerPass)
+      ? await fetchData(tasmotaApiUrl, tasmotaUser, tasmotaPass)
       : null;
 
     let widget = await createWidget(data, powerDrawData);

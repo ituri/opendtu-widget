@@ -4,21 +4,18 @@ const dtuPass = "changeme"; // replace with actual password for dtuApiUrl
 
 const tasmotaApiUrl = "http://change-me/cm?cmnd=status%208"; // API endpoint for Tasmota
 const tasmotaUser = "changeme"; // replace with actual username for tasmotaApiUrl
-const tasmotarPass = "changeme"; // replace with actual password for tasmotaApiUrl
+const tasmotaPass = "changeme"; // replace with actual password for tasmotaApiUrl
 
-const showPowerDraw = 1; // 1 for showing powerdraw, 0 for not showing
-const powerDrawThreshold = 0; // Threshold for power draw color change
+const showPowerDraw = 0;
+const powerDrawThreshold = 0;
 
-// Define color thresholds for Power value
-const redThreshold = 220; // Basic load
-const yellowThreshold = 260; // Threshold where there's enough production to add more consumers
-const greenThreshold = 400; // Point where we feed in
+const redThreshold = 220;
+const yellowThreshold = 260;
+const greenThreshold = 400;
 
-// Fetch data from the API
 async function fetchData(apiUrl, username, password) {
   let request = new Request(apiUrl);
-
-  // Add basic authentication
+  t;
   const auth = `${username}:${password}`;
   const base64Auth = btoa(auth);
   request.headers = {
@@ -34,13 +31,11 @@ async function fetchData(apiUrl, username, password) {
   }
 }
 
-// Create widget
 async function createWidget(data, powerDrawData) {
   let widget = new ListWidget();
 
-  // Define gradient background color
-  let startColor = new Color("#434C5E"); // Light Gray
-  let endColor = new Color("#2E3440"); // Black
+  let startColor = new Color("#434C5E");
+  let endColor = new Color("#2E3440");
   let gradient = new LinearGradient();
   gradient.colors = [startColor, endColor];
   gradient.locations = [0, 1];
@@ -53,12 +48,12 @@ async function createWidget(data, powerDrawData) {
   let powerData = parseFloat(data.inverters[0].AC["0"].Power.v);
   let yieldDayData = (
     parseFloat(data.inverters[0].AC["0"].YieldDay.v) / 1000
-  ).toFixed(2); // Convert Wh to kWh
+  ).toFixed(2);
   let yieldTotalData = parseFloat(
     data.inverters[0].AC["0"].YieldTotal.v
   ).toFixed(2);
 
-  widget.addSpacer(2); // Add some space between title and data
+  widget.addSpacer(2);
 
   let gridStack = widget.addStack();
   gridStack.layoutHorizontally();
@@ -72,7 +67,6 @@ async function createWidget(data, powerDrawData) {
 
   let powerText = leftStack.addText(`${powerData.toFixed(2)} W`);
   powerText.font = Font.systemFont(13);
-  // Adjust color based on power value
   if (powerData < redThreshold) {
     powerText.textColor = Color.red();
   } else if (powerData >= redThreshold && powerData < yellowThreshold) {
@@ -89,9 +83,10 @@ async function createWidget(data, powerDrawData) {
   yieldDayText.textColor = Color.white();
   yieldDayText.font = Font.systemFont(13);
 
+  let rightStack = gridStack.addStack();
+  rightStack.layoutVertically();
+
   if (showPowerDraw) {
-    let rightStack = gridStack.addStack();
-    rightStack.layoutVertically();
     let powerDrawDataValue = powerDrawData.StatusSNS[""]["current"];
 
     let powerDrawLabel = rightStack.addText(`Power Draw: `);
@@ -99,27 +94,26 @@ async function createWidget(data, powerDrawData) {
     powerDrawLabel.font = Font.systemFont(8);
     let powerDrawText = rightStack.addText(`${powerDrawDataValue} W`);
     powerDrawText.font = Font.systemFont(13);
-    // Adjust color based on power draw value
+
     if (powerDrawDataValue > powerDrawThreshold) {
       powerDrawText.textColor = Color.yellow();
     } else {
       powerDrawText.textColor = Color.green();
     }
+  }
 
-    // Display DC Output items
-    const dcOutputs = data.inverters[0].DC;
-    for (let key in dcOutputs) {
-      let dcName = dcOutputs[key].name.u; // Extract name
-      let dcPower = parseFloat(dcOutputs[key].Power.v);
+  const dcOutputs = data.inverters[0].DC;
+  for (let key in dcOutputs) {
+    let dcName = dcOutputs[key].name.u;
+    let dcPower = parseFloat(dcOutputs[key].Power.v);
 
-      let dcLabel = rightStack.addText(`${dcName}: `); // Display name and value
-      dcLabel.textColor = Color.white();
-      dcLabel.font = Font.systemFont(8);
+    let dcLabel = rightStack.addText(`${dcName}: `);
+    dcLabel.textColor = Color.white();
+    dcLabel.font = Font.systemFont(8);
 
-      let dcText = rightStack.addText(`${dcPower.toFixed(2)} W`);
-      dcText.font = Font.systemFont(13);
-      dcText.textColor = Color.white();
-    }
+    let dcText = rightStack.addText(`${dcPower.toFixed(2)} W`);
+    dcText.font = Font.systemFont(13);
+    dcText.textColor = Color.white();
   }
 
   let yieldTotalLabel = leftStack.addText(`Yield Total: `);
@@ -130,15 +124,14 @@ async function createWidget(data, powerDrawData) {
   yieldTotalText.textColor = Color.white();
   yieldTotalText.font = Font.systemFont(13);
 
-  // Add last updated timestamp
-  widget.addSpacer(); // Add some space before the timestamp
+  widget.addSpacer();
   let timeStampStack = widget.addStack();
   timeStampStack.layoutVertically();
   timeStampStack.addSpacer();
   let dateText = timeStampStack.addDate(new Date());
   dateText.textColor = Color.white();
   dateText.applyRelativeStyle();
-  dateText.font = Font.systemFont(8); // set font size on the date text
+  dateText.font = Font.systemFont(8);
   let agoText = timeStampStack.addText(" ago");
   agoText.textColor = Color.white();
   agoText.font = Font.systemFont(8);
@@ -146,12 +139,11 @@ async function createWidget(data, powerDrawData) {
   return widget;
 }
 
-// Main script
 async function run() {
   try {
     let data = await fetchData(dtuApiUrl, dtuUser, dtuPass);
     let powerDrawData = showPowerDraw
-      ? await fetchData(tasmotaApiUrl, powerUser, powerPass)
+      ? await fetchData(tasmotaApiUrl, tasmotaUser, tasmotaPass)
       : null;
 
     let widget = await createWidget(data, powerDrawData);
@@ -168,7 +160,7 @@ async function run() {
     if (config.runsInWidget) {
       Script.setWidget(widget);
     } else {
-      widget.presentSmall();
+      widget.presentMedium()();
     }
     Script.complete();
   }
