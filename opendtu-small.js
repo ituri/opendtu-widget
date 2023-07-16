@@ -145,7 +145,6 @@ async function run() {
     } else {
       widget.presentSmall();
     }
-    Script.complete();
   } catch (error) {
     console.error(error.message);
     let widget = new ListWidget();
@@ -155,7 +154,6 @@ async function run() {
     } else {
       widget.presentSmall();
     }
-    Script.complete();
   }
 }
 

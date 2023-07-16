@@ -139,6 +139,7 @@ async function createWidget(data, powerDrawData) {
   return widget;
 }
 
+// Main script
 async function run() {
   try {
     let data = await fetchData(dtuApiUrl, dtuUser, dtuPass);
@@ -152,7 +153,6 @@ async function run() {
     } else {
       widget.presentSmall();
     }
-    Script.complete();
   } catch (error) {
     console.error(error.message);
     let widget = new ListWidget();
@@ -160,9 +160,8 @@ async function run() {
     if (config.runsInWidget) {
       Script.setWidget(widget);
     } else {
-      widget.presentMedium()();
+      widget.presentMedium();
     }
-    Script.complete();
   }
 }
 
