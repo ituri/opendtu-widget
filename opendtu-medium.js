@@ -2,9 +2,17 @@ const dtuApiUrl = "http://change-me/api/livedata/status"; // API endpoint for Op
 const dtuUser = "changeme"; // replace with actual username for dtuApiUrl
 const dtuPass = "changeme"; // replace with actual password for dtuApiUrl
 
+const powermeter = "tasmota"; // Choose between "tasmota" or "shelly"
+
+// Tasmota configuration
 const tasmotaApiUrl = "http://change-me/cm?cmnd=status%208"; // API endpoint for Tasmota
 const tasmotaUser = "changeme"; // replace with actual username for tasmotaApiUrl
 const tasmotaPass = "changeme"; // replace with actual password for tasmotaApiUrl
+
+// Shelly configuration
+const shellyApiUrl = "https://change-me/"; // API endpoint for Shelly
+const shellyUser = "changeme"; // replace with actual username for shellyApiUrl
+const shellyPass = "changeme"; // replace with actual password for shellyApiUrl
 
 const showPowerDraw = 0;
 const powerDrawThreshold = 0;
@@ -28,6 +36,30 @@ async function fetchData(apiUrl, username, password) {
     console.error(`Could not fetch data: ${error}`);
     return null;
   }
+}
+
+// Helper function to retrieve power draw value from the API response
+function getPowerDrawValue(powerDrawData) {
+  if (powermeter === "tasmota") {
+    // Handle Tasmota API response structure
+    if (
+      powerDrawData &&
+      powerDrawData.StatusSNS &&
+      powerDrawData.StatusSNS.hasOwnProperty("")
+    ) {
+      return parseFloat(powerDrawData.StatusSNS[""]["current"]) || 0;
+    }
+  } else if (powermeter === "shelly") {
+    // Handle Shelly API response structure
+    if (
+      powerDrawData &&
+      powerDrawData.meters &&
+      powerDrawData.meters.length > 0
+    ) {
+      return parseFloat(powerDrawData.meters[0].power) || 0;
+    }
+  }
+  return 0;
 }
 
 async function createWidget(data, powerDrawData) {
@@ -86,7 +118,9 @@ async function createWidget(data, powerDrawData) {
   rightStack.layoutVertically();
 
   if (showPowerDraw) {
-    let powerDrawDataValue = powerDrawData.StatusSNS[""]["current"];
+    let powerDrawDataValue = powerDrawData
+      ? getPowerDrawValue(powerDrawData)
+      : 0;
 
     let powerDrawLabel = rightStack.addText(`Power Draw: `);
     powerDrawLabel.textColor = Color.white();
@@ -143,14 +177,19 @@ async function run() {
   try {
     let data = await fetchData(dtuApiUrl, dtuUser, dtuPass);
     let powerDrawData = showPowerDraw
-      ? await fetchData(tasmotaApiUrl, tasmotaUser, tasmotaPass)
+      ? await fetchData(
+          powermeter === "tasmota" ? tasmotaApiUrl : shellyApiUrl,
+          powermeter === "tasmota" ? tasmotaUser : shellyUser,
+          powermeter === "tasmota" ? tasmotaPass : shellyPass
+        )
       : null;
 
     let widget = await createWidget(data, powerDrawData);
+
     if (config.runsInWidget) {
       Script.setWidget(widget);
     } else {
-      widget.presentSmall();
+      widget.presentMedium();
     }
   } catch (error) {
     console.error(error.message);
@@ -164,4 +203,4 @@ async function run() {
   }
 }
 
-run();
+await run();
