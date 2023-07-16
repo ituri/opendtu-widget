@@ -160,10 +160,8 @@ async function createWidget(data, powerDrawData) {
   yieldTotalText.textColor = Color.white();
   yieldTotalText.font = Font.systemFont(13);
 
-  widget.addSpacer();
   let timeStampStack = widget.addStack();
   timeStampStack.layoutVertically();
-  // timeStampStack.addSpacer();
   let dateText = timeStampStack.addDate(new Date());
   dateText.textColor = Color.white();
   dateText.applyRelativeStyle();
