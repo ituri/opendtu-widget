@@ -125,7 +125,7 @@ async function createWidget(data, powerDrawData) {
     let powerDrawLabel = rightStack.addText(`Power Draw: `);
     powerDrawLabel.textColor = Color.white();
     powerDrawLabel.font = Font.systemFont(8);
-    let powerDrawText = rightStack.addText(`${powerDrawDataValue} W`);
+    let powerDrawText = rightStack.addText(`${powerDrawDataValue} W `);
     powerDrawText.font = Font.systemFont(13);
 
     if (powerDrawDataValue > powerDrawThreshold) {
@@ -135,16 +135,19 @@ async function createWidget(data, powerDrawData) {
     }
   }
 
+  let dcStack = gridStack.addStack();
+  dcStack.layoutVertically();
+
   const dcOutputs = data.inverters[0].DC;
   for (let key in dcOutputs) {
     let dcName = dcOutputs[key].name.u;
     let dcPower = parseFloat(dcOutputs[key].Power.v);
 
-    let dcLabel = rightStack.addText(`${dcName}: `);
+    let dcLabel = dcStack.addText(`${dcName}: `);
     dcLabel.textColor = Color.white();
     dcLabel.font = Font.systemFont(8);
 
-    let dcText = rightStack.addText(`${dcPower.toFixed(2)} W`);
+    let dcText = dcStack.addText(`${dcPower.toFixed(2)} W`);
     dcText.font = Font.systemFont(13);
     dcText.textColor = Color.white();
   }
@@ -160,7 +163,7 @@ async function createWidget(data, powerDrawData) {
   widget.addSpacer();
   let timeStampStack = widget.addStack();
   timeStampStack.layoutVertically();
-  timeStampStack.addSpacer();
+  // timeStampStack.addSpacer();
   let dateText = timeStampStack.addDate(new Date());
   dateText.textColor = Color.white();
   dateText.applyRelativeStyle();
