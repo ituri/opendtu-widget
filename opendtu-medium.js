@@ -122,7 +122,7 @@ async function createWidget(data, powerDrawData) {
       ? getPowerDrawValue(powerDrawData)
       : 0;
 
-    let powerDrawLabel = rightStack.addText(`Power Draw: `);
+    let powerDrawLabel = rightStack.addText(`Power Draw:     `);
     powerDrawLabel.textColor = Color.white();
     powerDrawLabel.font = Font.systemFont(8);
     let powerDrawText = rightStack.addText(`${powerDrawDataValue} W `);
