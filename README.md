@@ -12,7 +12,7 @@ To set up the widget, follow these steps:
 ### Obligatory
 
 1. Load the `opendtu-small.js` or `opendtu-medium.js` file into Scriptable.
-2. Run the widget. Upon the first run, a opendtu-config.json is created inside the Scriptable folder of your iCloud. Update the `dtuApiUrl` variable with the IP address or URL of your OpenDTU.
+2. Run the widget. Upon the first run, an `opendtu-config.json` file is created inside the Scriptable folder of your iCloud. Update the `dtuApiUrl` variable with the IP address or URL of your OpenDTU.
 
 ### Optional: Current power draw
 
