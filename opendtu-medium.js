@@ -110,30 +110,17 @@ async function createWidget(data, powerDrawData) {
   yieldDayLabel.textColor = Color.white();
   yieldDayLabel.font = Font.systemFont(8);
 
-  let yieldDayText = leftStack.addText(`${yieldDayData} kWh  `);
+  let yieldDayText = leftStack.addText(`${yieldDayData} kWh`);
   yieldDayText.textColor = Color.white();
   yieldDayText.font = Font.systemFont(13);
 
-  let rightStack = gridStack.addStack();
-  rightStack.layoutVertically();
+  let yieldTotalLabel = leftStack.addText(`Yield Total: `);
+  yieldTotalLabel.textColor = Color.white();
+  yieldTotalLabel.font = Font.systemFont(8);
 
-  if (showPowerDraw) {
-    let powerDrawDataValue = powerDrawData
-      ? getPowerDrawValue(powerDrawData)
-      : 0;
-
-    let powerDrawLabel = rightStack.addText(`Power Draw:     `);
-    powerDrawLabel.textColor = Color.white();
-    powerDrawLabel.font = Font.systemFont(8);
-    let powerDrawText = rightStack.addText(`${powerDrawDataValue} W `);
-    powerDrawText.font = Font.systemFont(13);
-
-    if (powerDrawDataValue > powerDrawThreshold) {
-      powerDrawText.textColor = Color.yellow();
-    } else {
-      powerDrawText.textColor = Color.green();
-    }
-  }
+  let yieldTotalText = leftStack.addText(`${yieldTotalData} kWh    `);
+  yieldTotalText.textColor = Color.white();
+  yieldTotalText.font = Font.systemFont(13);
 
   let dcStack = gridStack.addStack();
   dcStack.layoutVertically();
@@ -152,13 +139,26 @@ async function createWidget(data, powerDrawData) {
     dcText.textColor = Color.white();
   }
 
-  let yieldTotalLabel = leftStack.addText(`Yield Total: `);
-  yieldTotalLabel.textColor = Color.white();
-  yieldTotalLabel.font = Font.systemFont(8);
+  let rightStack = gridStack.addStack();
+  rightStack.layoutVertically();
 
-  let yieldTotalText = leftStack.addText(`${yieldTotalData} kWh`);
-  yieldTotalText.textColor = Color.white();
-  yieldTotalText.font = Font.systemFont(13);
+  if (showPowerDraw) {
+    let powerDrawDataValue = powerDrawData
+      ? getPowerDrawValue(powerDrawData)
+      : 0;
+
+    let powerDrawLabel = rightStack.addText(`Power Draw: `);
+    powerDrawLabel.textColor = Color.white();
+    powerDrawLabel.font = Font.systemFont(8);
+    let powerDrawText = rightStack.addText(`${powerDrawDataValue} W`);
+    powerDrawText.font = Font.systemFont(13);
+
+    if (powerDrawDataValue > powerDrawThreshold) {
+      powerDrawText.textColor = Color.yellow();
+    } else {
+      powerDrawText.textColor = Color.green();
+    }
+  }
 
   let timeStampStack = widget.addStack();
   timeStampStack.layoutVertically();
