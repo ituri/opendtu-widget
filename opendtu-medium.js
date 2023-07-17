@@ -1,26 +1,42 @@
-const dtuApiUrl = "http://change-me/api/livedata/status"; // API endpoint for OpenDTU
-const dtuUser = "changeme"; // replace with actual username for dtuApiUrl
-const dtuPass = "changeme"; // replace with actual password for dtuApiUrl
+const configFileName = "opendtu-config.json"; // Name of the config file
 
-const powermeter = "tasmota"; // Choose between "tasmota" or "shelly"
+// This function handles loading settings
+async function loadSettings() {
+  let fm = FileManager.iCloud();
+  let dir = fm.documentsDirectory();
+  let path = fm.joinPath(dir, configFileName);
 
-// Tasmota configuration
-const tasmotaApiUrl = "http://change-me/cm?cmnd=status%208"; // API endpoint for Tasmota
-const tasmotaUser = "changeme"; // replace with actual username for tasmotaApiUrl
-const tasmotaPass = "changeme"; // replace with actual password for tasmotaApiUrl
+  if (fm.fileExists(path)) {
+    // Read existing settings file
+    let raw = await fm.readString(path);
+    return JSON.parse(raw);
+  } else {
+    // First time run, create a default settings file
+    let defaultSettings = {
+      dtuApiUrl: "http://change-me/api/livedata/status",
+      dtuUser: "changeme",
+      dtuPass: "changeme",
+      powermeter: "tasmota",
+      tasmotaApiUrl: "http://change-me/cm?cmnd=status%208",
+      tasmotaUser: "changeme",
+      tasmotaPass: "changeme",
+      shellyApiUrl: "https://change-me/",
+      shellyUser: "changeme",
+      shellyPass: "changeme",
+      showPowerDraw: 0,
+      powerDrawThreshold: 0,
+      redThreshold: 220,
+      yellowThreshold: 260,
+      greenThreshold: 400,
+    };
+    await fm.writeString(path, JSON.stringify(defaultSettings));
+    return defaultSettings;
+  }
+}
 
-// Shelly configuration
-const shellyApiUrl = "https://change-me/"; // API endpoint for Shelly
-const shellyUser = "changeme"; // replace with actual username for shellyApiUrl
-const shellyPass = "changeme"; // replace with actual password for shellyApiUrl
+let settings = await loadSettings(); // Load settings
 
-const showPowerDraw = 0;
-const powerDrawThreshold = 0;
-
-const redThreshold = 220;
-const yellowThreshold = 260;
-const greenThreshold = 400;
-
+// Fetch data from the API
 async function fetchData(apiUrl, username, password) {
   let request = new Request(apiUrl);
   const auth = `${username}:${password}`;
@@ -40,7 +56,7 @@ async function fetchData(apiUrl, username, password) {
 
 // Helper function to retrieve power draw value from the API response
 function getPowerDrawValue(powerDrawData) {
-  if (powermeter === "tasmota") {
+  if (settings.powermeter === "tasmota") {
     // Handle Tasmota API response structure
     if (
       powerDrawData &&
@@ -49,7 +65,7 @@ function getPowerDrawValue(powerDrawData) {
     ) {
       return parseFloat(powerDrawData.StatusSNS[""]["current"]) || 0;
     }
-  } else if (powermeter === "shelly") {
+  } else if (settings.powermeter === "shelly") {
     // Handle Shelly API response structure
     if (
       powerDrawData &&
@@ -64,6 +80,8 @@ function getPowerDrawValue(powerDrawData) {
 
 async function createWidget(data, powerDrawData) {
   let widget = new ListWidget();
+
+  let settings = await loadSettings();
 
   let startColor = new Color("#434C5E");
   let endColor = new Color("#2E3440");
@@ -98,9 +116,12 @@ async function createWidget(data, powerDrawData) {
 
   let powerText = leftStack.addText(`${powerData.toFixed(2)} W`);
   powerText.font = Font.systemFont(13);
-  if (powerData < redThreshold) {
+  if (powerData < settings.redThreshold) {
     powerText.textColor = Color.red();
-  } else if (powerData >= redThreshold && powerData < yellowThreshold) {
+  } else if (
+    powerData >= settings.redThreshold &&
+    powerData < settings.yellowThreshold
+  ) {
     powerText.textColor = Color.yellow();
   } else {
     powerText.textColor = Color.green();
@@ -142,7 +163,7 @@ async function createWidget(data, powerDrawData) {
   let rightStack = gridStack.addStack();
   rightStack.layoutVertically();
 
-  if (showPowerDraw) {
+  if (settings.showPowerDraw) {
     let powerDrawDataValue = powerDrawData
       ? getPowerDrawValue(powerDrawData)
       : 0;
@@ -153,7 +174,7 @@ async function createWidget(data, powerDrawData) {
     let powerDrawText = rightStack.addText(`${powerDrawDataValue} W`);
     powerDrawText.font = Font.systemFont(13);
 
-    if (powerDrawDataValue > powerDrawThreshold) {
+    if (powerDrawDataValue > settings.powerDrawThreshold) {
       powerDrawText.textColor = Color.yellow();
     } else {
       powerDrawText.textColor = Color.green();
@@ -176,12 +197,22 @@ async function createWidget(data, powerDrawData) {
 // Main script
 async function run() {
   try {
-    let data = await fetchData(dtuApiUrl, dtuUser, dtuPass);
-    let powerDrawData = showPowerDraw
+    let data = await fetchData(
+      settings.dtuApiUrl,
+      settings.dtuUser,
+      settings.dtuPass
+    );
+    let powerDrawData = settings.showPowerDraw
       ? await fetchData(
-          powermeter === "tasmota" ? tasmotaApiUrl : shellyApiUrl,
-          powermeter === "tasmota" ? tasmotaUser : shellyUser,
-          powermeter === "tasmota" ? tasmotaPass : shellyPass
+          settings.powermeter === "tasmota"
+            ? settings.tasmotaApiUrl
+            : settings.shellyApiUrl,
+          settings.powermeter === "tasmota"
+            ? settings.tasmotaUser
+            : settings.shellyUser,
+          settings.powermeter === "tasmota"
+            ? settings.tasmotaPass
+            : settings.shellyPass
         )
       : null;
 
