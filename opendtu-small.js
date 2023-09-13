@@ -216,7 +216,7 @@ async function run() {
     if (config.runsInWidget) {
       Script.setWidget(widget);
     } else {
-      widget.presenSmall();
+      widget.presentSmall();
     }
   }
 }
