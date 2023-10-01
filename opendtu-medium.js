@@ -36,14 +36,18 @@ async function loadSettings() {
 
 let settings = await loadSettings(); // Load settings
 
-// Fetch data from the API
-async function fetchData(apiUrl, username, password) {
+// FEtch the data from the API
+async function fetchData(apiUrl, username, password, timeoutMillis) {
   let request = new Request(apiUrl);
+
+  // Add basic authentication
   const auth = `${username}:${password}`;
   const base64Auth = btoa(auth);
   request.headers = {
     Authorization: `Basic ${base64Auth}`,
   };
+
+  request.timeoutInterval = timeoutMillis;
 
   try {
     let response = await request.loadJSON();
@@ -94,13 +98,7 @@ async function createWidget(data, powerDrawData) {
   title.textColor = Color.white();
   title.font = Font.boldSystemFont(16);
 
-  let powerData = parseFloat(data.inverters[0].AC["0"].Power.v);
-  let yieldDayData = (
-    parseFloat(data.inverters[0].AC["0"].YieldDay.v) / 1000
-  ).toFixed(2);
-  let yieldTotalData = parseFloat(
-    data.inverters[0].AC["0"].YieldTotal.v
-  ).toFixed(2);
+  let inverterProducing = data.inverters[0].producing;
 
   widget.addSpacer(2);
 
@@ -110,38 +108,58 @@ async function createWidget(data, powerDrawData) {
   let leftStack = gridStack.addStack();
   leftStack.layoutVertically();
 
-  let powerLabel = leftStack.addText(`Power:`);
-  powerLabel.textColor = Color.white();
-  powerLabel.font = Font.systemFont(8);
+  if (!inverterProducing) {
+    // If inverter is offline, display "Offline" in red
+    let powerLabel = leftStack.addText(`Power:`);
+    powerLabel.textColor = Color.white();
+    powerLabel.font = Font.systemFont(8);
 
-  let powerText = leftStack.addText(`${powerData.toFixed(2)} W`);
-  powerText.font = Font.systemFont(13);
-  if (powerData < settings.redThreshold) {
-    powerText.textColor = Color.red();
-  } else if (
-    powerData >= settings.redThreshold &&
-    powerData < settings.yellowThreshold
-  ) {
-    powerText.textColor = Color.yellow();
+    let offlineText = leftStack.addText(`Offline`);
+    offlineText.textColor = Color.red(); // Display "Offline" in red
+    offlineText.font = Font.systemFont(13);
   } else {
-    powerText.textColor = Color.green();
+    // Display power data when the inverter is producing
+    let powerData = parseFloat(data.inverters[0].AC["0"].Power.v);
+    let yieldDayData = (
+      parseFloat(data.inverters[0].AC["0"].YieldDay.v) / 1000
+    ).toFixed(2);
+    let yieldTotalData = parseFloat(
+      data.inverters[0].AC["0"].YieldTotal.v
+    ).toFixed(2);
+
+    let powerLabel = leftStack.addText(`Power:`);
+    powerLabel.textColor = Color.white();
+    powerLabel.font = Font.systemFont(8);
+
+    let powerText = leftStack.addText(`${powerData.toFixed(2)} W`);
+    powerText.font = Font.systemFont(13);
+    if (powerData < settings.redThreshold) {
+      powerText.textColor = Color.red();
+    } else if (
+      powerData >= settings.redThreshold &&
+      powerData < settings.yellowThreshold
+    ) {
+      powerText.textColor = Color.yellow();
+    } else {
+      powerText.textColor = Color.green();
+    }
+
+    let yieldDayLabel = leftStack.addText(`Yield Day: `);
+    yieldDayLabel.textColor = Color.white();
+    yieldDayLabel.font = Font.systemFont(8);
+
+    let yieldDayText = leftStack.addText(`${yieldDayData} kWh`);
+    yieldDayText.textColor = Color.white();
+    yieldDayText.font = Font.systemFont(13);
+
+    let yieldTotalLabel = leftStack.addText(`Yield Total: `);
+    yieldTotalLabel.textColor = Color.white();
+    yieldTotalLabel.font = Font.systemFont(8);
+
+    let yieldTotalText = leftStack.addText(`${yieldTotalData} kWh    `);
+    yieldTotalText.textColor = Color.white();
+    yieldTotalText.font = Font.systemFont(13);
   }
-
-  let yieldDayLabel = leftStack.addText(`Yield Day: `);
-  yieldDayLabel.textColor = Color.white();
-  yieldDayLabel.font = Font.systemFont(8);
-
-  let yieldDayText = leftStack.addText(`${yieldDayData} kWh`);
-  yieldDayText.textColor = Color.white();
-  yieldDayText.font = Font.systemFont(13);
-
-  let yieldTotalLabel = leftStack.addText(`Yield Total: `);
-  yieldTotalLabel.textColor = Color.white();
-  yieldTotalLabel.font = Font.systemFont(8);
-
-  let yieldTotalText = leftStack.addText(`${yieldTotalData} kWh    `);
-  yieldTotalText.textColor = Color.white();
-  yieldTotalText.font = Font.systemFont(13);
 
   let dcStack = gridStack.addStack();
   dcStack.layoutVertically();
@@ -200,7 +218,8 @@ async function run() {
     let data = await fetchData(
       settings.dtuApiUrl,
       settings.dtuUser,
-      settings.dtuPass
+      settings.dtuPass,
+      10000
     );
     let powerDrawData = settings.showPowerDraw
       ? await fetchData(
@@ -212,7 +231,8 @@ async function run() {
             : settings.shellyUser,
           settings.powermeter === "tasmota"
             ? settings.tasmotaPass
-            : settings.shellyPass
+            : settings.shellyPass,
+          10000
         )
       : null;
 

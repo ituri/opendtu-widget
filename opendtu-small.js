@@ -37,7 +37,7 @@ async function loadSettings() {
 let settings = await loadSettings(); // Load settings
 
 // Fetch data from the API
-async function fetchData(apiUrl, username, password) {
+async function fetchData(apiUrl, username, password, timeoutMillis) {
   let request = new Request(apiUrl);
 
   // Add basic authentication
@@ -46,6 +46,8 @@ async function fetchData(apiUrl, username, password) {
   request.headers = {
     Authorization: `Basic ${base64Auth}`,
   };
+
+  request.timeoutInterval = timeoutMillis;
 
   try {
     let response = await request.loadJSON();
@@ -112,18 +114,26 @@ async function createWidget(data, powerDrawData) {
   powerLabel.textColor = Color.white();
   powerLabel.font = Font.systemFont(8);
 
-  let powerText = leftStack.addText(`${powerData.toFixed(2)} W`);
-  powerText.font = Font.systemFont(13);
-  // Adjust color based on power value
-  if (powerData < settings.redThreshold) {
-    powerText.textColor = Color.red();
-  } else if (
-    powerData >= settings.redThreshold &&
-    powerData < settings.yellowThreshold
-  ) {
-    powerText.textColor = Color.yellow();
+  if (!data.inverters[0].producing) {
+    // If not producing, display "Offline" in red below "Power:"
+    let offlineLabel = leftStack.addText(`Offline`);
+    offlineLabel.textColor = Color.red();
+    offlineLabel.font = Font.systemFont(13);
   } else {
-    powerText.textColor = Color.green();
+    // Display power data when producing
+    let powerText = leftStack.addText(`${powerData.toFixed(2)} W`);
+    powerText.font = Font.systemFont(13);
+    // Adjust color based on power value
+    if (powerData < settings.redThreshold) {
+      powerText.textColor = Color.red();
+    } else if (
+      powerData >= settings.redThreshold &&
+      powerData < settings.yellowThreshold
+    ) {
+      powerText.textColor = Color.yellow();
+    } else {
+      powerText.textColor = Color.green();
+    }
   }
 
   let yieldDayLabel = leftStack.addText(`Yield Day: `);
@@ -186,7 +196,8 @@ async function run() {
     let data = await fetchData(
       settings.dtuApiUrl,
       settings.dtuUser,
-      settings.dtuPass
+      settings.dtuPass,
+      10000
     );
     let powerDrawData = settings.showPowerDraw
       ? await fetchData(
