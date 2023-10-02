@@ -36,18 +36,16 @@ async function loadSettings() {
 
 let settings = await loadSettings(); // Load settings
 
-// FEtch the data from the API
+// Here the script continues, replacing the hardcoded variables
+// with settings.dtuApiUrl, settings.dtuUser, etc.
+
 async function fetchData(apiUrl, username, password, timeoutMillis) {
   let request = new Request(apiUrl);
-
-  // Add basic authentication
   const auth = `${username}:${password}`;
   const base64Auth = btoa(auth);
   request.headers = {
     Authorization: `Basic ${base64Auth}`,
   };
-
-  request.timeoutInterval = timeoutMillis;
 
   try {
     let response = await request.loadJSON();
@@ -98,7 +96,13 @@ async function createWidget(data, powerDrawData) {
   title.textColor = Color.white();
   title.font = Font.boldSystemFont(16);
 
-  let inverterProducing = data.inverters[0].producing;
+  let powerData = parseFloat(data.inverters[0].AC["0"].Power.v);
+  let yieldDayData = (
+    parseFloat(data.inverters[0].AC["0"].YieldDay.v) / 1000
+  ).toFixed(2);
+  let yieldTotalData = parseFloat(
+    data.inverters[0].AC["0"].YieldTotal.v
+  ).toFixed(2);
 
   widget.addSpacer(2);
 
@@ -108,58 +112,38 @@ async function createWidget(data, powerDrawData) {
   let leftStack = gridStack.addStack();
   leftStack.layoutVertically();
 
-  if (!inverterProducing) {
-    // If inverter is offline, display "Offline" in red
-    let powerLabel = leftStack.addText(`Power:`);
-    powerLabel.textColor = Color.white();
-    powerLabel.font = Font.systemFont(8);
+  let powerLabel = leftStack.addText(`Power:`);
+  powerLabel.textColor = Color.white();
+  powerLabel.font = Font.systemFont(8);
 
-    let offlineText = leftStack.addText(`Offline`);
-    offlineText.textColor = Color.red(); // Display "Offline" in red
-    offlineText.font = Font.systemFont(13);
+  let powerText = leftStack.addText(`${powerData.toFixed(2)} W`);
+  powerText.font = Font.systemFont(13);
+  if (powerData < settings.redThreshold) {
+    powerText.textColor = Color.red();
+  } else if (
+    powerData >= settings.redThreshold &&
+    powerData < settings.yellowThreshold
+  ) {
+    powerText.textColor = Color.yellow();
   } else {
-    // Display power data when the inverter is producing
-    let powerData = parseFloat(data.inverters[0].AC["0"].Power.v);
-    let yieldDayData = (
-      parseFloat(data.inverters[0].AC["0"].YieldDay.v) / 1000
-    ).toFixed(2);
-    let yieldTotalData = parseFloat(
-      data.inverters[0].AC["0"].YieldTotal.v
-    ).toFixed(2);
-
-    let powerLabel = leftStack.addText(`Power:`);
-    powerLabel.textColor = Color.white();
-    powerLabel.font = Font.systemFont(8);
-
-    let powerText = leftStack.addText(`${powerData.toFixed(2)} W`);
-    powerText.font = Font.systemFont(13);
-    if (powerData < settings.redThreshold) {
-      powerText.textColor = Color.red();
-    } else if (
-      powerData >= settings.redThreshold &&
-      powerData < settings.yellowThreshold
-    ) {
-      powerText.textColor = Color.yellow();
-    } else {
-      powerText.textColor = Color.green();
-    }
-
-    let yieldDayLabel = leftStack.addText(`Yield Day: `);
-    yieldDayLabel.textColor = Color.white();
-    yieldDayLabel.font = Font.systemFont(8);
-
-    let yieldDayText = leftStack.addText(`${yieldDayData} kWh`);
-    yieldDayText.textColor = Color.white();
-    yieldDayText.font = Font.systemFont(13);
-
-    let yieldTotalLabel = leftStack.addText(`Yield Total: `);
-    yieldTotalLabel.textColor = Color.white();
-    yieldTotalLabel.font = Font.systemFont(8);
-
-    let yieldTotalText = leftStack.addText(`${yieldTotalData} kWh    `);
-    yieldTotalText.textColor = Color.white();
-    yieldTotalText.font = Font.systemFont(13);
+    powerText.textColor = Color.green();
   }
+
+  let yieldDayLabel = leftStack.addText(`Yield Day: `);
+  yieldDayLabel.textColor = Color.white();
+  yieldDayLabel.font = Font.systemFont(8);
+
+  let yieldDayText = leftStack.addText(`${yieldDayData} kWh`);
+  yieldDayText.textColor = Color.white();
+  yieldDayText.font = Font.systemFont(13);
+
+  let yieldTotalLabel = leftStack.addText(`Yield Total: `);
+  yieldTotalLabel.textColor = Color.white();
+  yieldTotalLabel.font = Font.systemFont(8);
+
+  let yieldTotalText = leftStack.addText(`${yieldTotalData} kWh    `);
+  yieldTotalText.textColor = Color.white();
+  yieldTotalText.font = Font.systemFont(13);
 
   let dcStack = gridStack.addStack();
   dcStack.layoutVertically();
