@@ -13,7 +13,7 @@ async function loadSettings() {
   } else {
     // First time run, create a default settings file
     let defaultSettings = {
-      dtuApiUrl: "http://change-me/api/livedata/status",
+      dtuApiUrl: "http://change-me/api/livedata/status/", // Make sure to add a trailing slash for the medium widget to work!
       dtuUser: "changeme",
       dtuPass: "changeme",
       powermeter: "tasmota",
@@ -28,6 +28,7 @@ async function loadSettings() {
       redThreshold: 220,
       yellowThreshold: 260,
       greenThreshold: 400,
+      inverterSerial: "XXXXXXXXXXXX",
     };
     await fm.writeString(path, JSON.stringify(defaultSettings));
     return defaultSettings;
@@ -40,7 +41,7 @@ let settings = await loadSettings(); // Load settings
 // with settings.dtuApiUrl, settings.dtuUser, etc.
 
 async function fetchData(apiUrl, username, password, timeoutMillis) {
-  let request = new Request(apiUrl);
+  let request = new Request(`${apiUrl}?inv=${settings.inverterSerial}`);
   const auth = `${username}:${password}`;
   const base64Auth = btoa(auth);
   request.headers = {
