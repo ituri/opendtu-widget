@@ -98,10 +98,10 @@ async function createWidget(data, powerDrawData) {
 
   let powerData = parseFloat(data.inverters[0].AC["0"].Power.v);
   let yieldDayData = (
-    parseFloat(data.inverters[0].AC["0"].YieldDay.v) / 1000
+    parseFloat(data.inverters[0].DC["0"].YieldDay.v) / 1000
   ).toFixed(2);
   let yieldTotalData = parseFloat(
-    data.inverters[0].AC["0"].YieldTotal.v
+    data.inverters[0].DC["0"].YieldTotal.v
   ).toFixed(2);
 
   widget.addSpacer(2);
