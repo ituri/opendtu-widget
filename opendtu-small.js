@@ -13,7 +13,7 @@ async function loadSettings() {
   } else {
     // First time run, create a default settings file
     let defaultSettings = {
-      dtuApiUrl: "http://change-me/api/livedata/status",
+      dtuApiUrl: "http://change-me/api/livedata/status/",
       dtuUser: "changeme",
       dtuPass: "changeme",
       powermeter: "tasmota",
@@ -28,6 +28,7 @@ async function loadSettings() {
       redThreshold: 220,
       yellowThreshold: 260,
       greenThreshold: 400,
+      inverterSerial: "XXXXXXXXXXXX",
     };
     await fm.writeString(path, JSON.stringify(defaultSettings));
     return defaultSettings;
@@ -38,7 +39,7 @@ let settings = await loadSettings(); // Load settings
 
 // Fetch data from the API
 async function fetchData(apiUrl, username, password, timeoutMillis) {
-  let request = new Request(apiUrl);
+  let request = new Request(`${apiUrl}?inv=${settings.inverterSerial}`);
 
   // Add basic authentication
   const auth = `${username}:${password}`;
