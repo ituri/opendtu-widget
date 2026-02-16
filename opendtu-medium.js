@@ -179,33 +179,28 @@ function createErrorWidget(errorMessage, isFromCache = false) {
 }
 
 function createWidget(data, powerDrawData, timestamp = new Date()) {
-  let widget = new ListWidget();
+  try {
+    let widget = new ListWidget();
 
-  let startColor = new Color("#434C5E");
-  let endColor = new Color("#2E3440");
-  let gradient = new LinearGradient();
-  gradient.colors = [startColor, endColor];
-  gradient.locations = [0, 1];
-  widget.backgroundGradient = gradient;
+    let startColor = new Color("#434C5E");
+    let endColor = new Color("#2E3440");
+    let gradient = new LinearGradient();
+    gradient.colors = [startColor, endColor];
+    gradient.locations = [0, 1];
+    widget.backgroundGradient = gradient;
 
-  // Check if data is valid
-  if (!data || !data.inverters || !data.inverters[0]) {
-    return createErrorWidget("Ungültige Daten empfangen");
-  }
+    // Check if data is valid
+    if (!data || !data.inverters || !data.inverters[0]) {
+      return createErrorWidget("Ungültige Daten empfangen");
+    }
 
   let inverter = data.inverters[0];
   let isProducing = inverter.producing || false;
-  let isReachable = inverter.reachable !== false;
 
-  // Choose icon based on status
-  let icon = "☀️";
-  if (!isReachable) {
-    icon = "⚠️";
-  } else if (!isProducing) {
-    icon = "🌙";
-  }
+  // Choose icon based on status (only check if producing)
+  let icon = isProducing ? "☀️" : "🌙";
 
-  let title = widget.addText(`OpenDTU${icon}`);
+  let title = widget.addText(`OpenDTU ${icon}`);
   title.textColor = Color.white();
   title.font = Font.boldSystemFont(16);
 
@@ -239,17 +234,13 @@ function createWidget(data, powerDrawData, timestamp = new Date()) {
   powerLabel.textColor = Color.white();
   powerLabel.font = Font.systemFont(8);
 
-  if (!isReachable) {
-    // If not reachable, display "Keine Verbindung" in orange
-    let errorLabel = leftStack.addText(`Keine Verbindung`);
-    errorLabel.textColor = Color.orange();
-    errorLabel.font = Font.systemFont(13);
-  } else if (!isProducing) {
-    // If not producing, display "Offline" in gray (normal at night)
+  if (!isProducing) {
+    // Not producing - offline (night/cloudy)
     let offlineLabel = leftStack.addText(`Offline`);
     offlineLabel.textColor = Color.gray();
     offlineLabel.font = Font.systemFont(13);
   } else {
+    // Producing - show power value with color coding
     let powerText = leftStack.addText(`${powerData.toFixed(2)} W`);
     powerText.font = Font.systemFont(13);
     if (powerData < settings.redThreshold) {
@@ -330,7 +321,11 @@ function createWidget(data, powerDrawData, timestamp = new Date()) {
   agoText.textColor = Color.white();
   agoText.font = Font.systemFont(8);
 
-  return widget;
+    return widget;
+  } catch (error) {
+    console.error(`Widget creation error: ${error}`);
+    return createErrorWidget(`Fehler: ${error.message}`);
+  }
 }
 
 // Background refresh: Updates cache without blocking widget display
