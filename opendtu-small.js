@@ -197,17 +197,11 @@ function createWidget(data, powerDrawData, timestamp = new Date()) {
   let yieldDayData = (parseFloat(data.total.YieldDay.v) / 1000).toFixed(2); // Convert Wh to kWh
   let yieldTotalData = parseFloat(data.total.YieldTotal.v).toFixed(2);
   let isProducing = data.inverters[0].producing;
-  let isReachable = data.inverters[0].reachable;
 
-  // Choose icon based on status
-  let icon = "☀️";
-  if (!isReachable) {
-    icon = "⚠️";
-  } else if (!isProducing) {
-    icon = "🌙";
-  }
+  // Choose icon based on status (only check if producing)
+  let icon = isProducing ? "☀️" : "🌙";
 
-  let title = widget.addText(`OpenDTU${icon}`);
+  let title = widget.addText(`OpenDTU ${icon}`);
   title.textColor = Color.white();
   title.font = Font.boldSystemFont(16);
 
@@ -223,21 +217,15 @@ function createWidget(data, powerDrawData, timestamp = new Date()) {
   powerLabel.textColor = Color.white();
   powerLabel.font = Font.systemFont(8);
 
-  if (!isReachable) {
-    // If not reachable, display "Keine Verbindung" in orange
-    let errorLabel = leftStack.addText(`Keine Verbindung`);
-    errorLabel.textColor = Color.orange();
-    errorLabel.font = Font.systemFont(13);
-  } else if (!isProducing) {
-    // If not producing, display "Offline" in gray (normal at night)
+  if (!isProducing) {
+    // Not producing - offline (night/cloudy)
     let offlineLabel = leftStack.addText(`Offline`);
     offlineLabel.textColor = Color.gray();
     offlineLabel.font = Font.systemFont(13);
   } else {
-    // Display power data when producing
+    // Producing - show power value with color coding
     let powerText = leftStack.addText(`${powerData.toFixed(2)} W`);
     powerText.font = Font.systemFont(13);
-    // Adjust color based on power value
     if (powerData < settings.redThreshold) {
       powerText.textColor = Color.red();
     } else if (
