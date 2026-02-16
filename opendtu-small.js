@@ -1,19 +1,40 @@
 const configFileName = "opendtu-config.json"; // Name of the config file
 const cacheFileName = "opendtu-cache.json"; // Name of the cache file
+const settingsCacheFileName = "opendtu-settings-cache.json"; // Cached settings
+const SETTINGS_CACHE_DURATION = 5 * 60 * 1000; // 5 minutes in milliseconds
 
-// This function handles loading settings
+// Load settings with local caching for performance
 async function loadSettings() {
-  let fm = FileManager.iCloud(); // Keep config in iCloud for syncing across devices
-  let dir = fm.documentsDirectory();
-  let path = fm.joinPath(dir, configFileName);
+  let fmLocal = FileManager.local();
+  let dir = fmLocal.documentsDirectory();
+  let cachePath = fmLocal.joinPath(dir, settingsCacheFileName);
 
-  if (fm.fileExists(path)) {
-    // Read existing settings file
-    let raw = await fm.readString(path);
-    return JSON.parse(raw);
+  // Try to load from local cache first (fastest)
+  if (fmLocal.fileExists(cachePath)) {
+    try {
+      let cached = JSON.parse(fmLocal.readString(cachePath));
+      let age = Date.now() - cached.timestamp;
+
+      // If cache is fresh (< 5 minutes), use it
+      if (age < SETTINGS_CACHE_DURATION) {
+        return cached.settings;
+      }
+    } catch (error) {
+      console.log("Settings cache read error, will reload from iCloud");
+    }
+  }
+
+  // Load from iCloud (slower but authoritative)
+  let fm = FileManager.iCloud();
+  let iCloudPath = fm.joinPath(fm.documentsDirectory(), configFileName);
+
+  let settings;
+  if (fm.fileExists(iCloudPath)) {
+    let raw = await fm.readString(iCloudPath);
+    settings = JSON.parse(raw);
   } else {
-    // First time run, create a default settings file
-    let defaultSettings = {
+    // First time run, create default settings
+    settings = {
       dtuApiUrl: "http://change-me/api/livedata/status/",
       dtuUser: "changeme",
       dtuPass: "changeme",
@@ -31,9 +52,20 @@ async function loadSettings() {
       greenThreshold: 400,
       inverterSerial: "XXXXXXXXXXXX",
     };
-    await fm.writeString(path, JSON.stringify(defaultSettings));
-    return defaultSettings;
+    await fm.writeString(iCloudPath, JSON.stringify(settings));
   }
+
+  // Save to local cache for next time
+  try {
+    fmLocal.writeString(cachePath, JSON.stringify({
+      timestamp: Date.now(),
+      settings: settings
+    }));
+  } catch (error) {
+    console.log("Could not cache settings locally");
+  }
+
+  return settings;
 }
 
 // Save cached data
@@ -69,15 +101,13 @@ function loadCache() {
 
 let settings = await loadSettings(); // Load settings
 
-// Fetch data from the API
+// Fetch data from the API with minimal headers
 async function fetchData(apiUrl, username, password, timeoutMillis = 3) {
   let request = new Request(`${apiUrl}?inv=${settings.inverterSerial}`);
 
-  // Add basic authentication
-  const auth = `${username}:${password}`;
-  const base64Auth = btoa(auth);
+  // Only set essential headers (minimized for performance)
   request.headers = {
-    Authorization: `Basic ${base64Auth}`,
+    Authorization: `Basic ${btoa(`${username}:${password}`)}`
   };
 
   request.timeoutInterval = timeoutMillis;
@@ -272,12 +302,9 @@ function createWidget(data, powerDrawData, timestamp = new Date()) {
   return widget;
 }
 
-// Main script
-async function run() {
-  let widget;
-
+// Background refresh: Updates cache without blocking widget display
+async function backgroundRefresh() {
   try {
-    // Fetch DTU and power draw data in parallel for better performance
     let promises = [
       fetchData(settings.dtuApiUrl, settings.dtuUser, settings.dtuPass, 3)
     ];
@@ -304,11 +331,78 @@ async function run() {
     let powerDrawResult = results.length > 1 ? results[1] : null;
 
     if (dtuResult.success) {
-      // Successfully fetched new data
+      saveCache({
+        dtu: dtuResult.data,
+        powerDraw: powerDrawResult && powerDrawResult.success ? powerDrawResult.data : null
+      });
+    }
+  } catch (error) {
+    console.log(`Background refresh failed: ${error}`);
+  }
+}
+
+// Main script with Optimistic UI
+async function run() {
+  let widget;
+  let cache = loadCache();
+
+  // OPTIMISTIC UI: Show cache immediately if available (instant load!)
+  if (cache && cache.data && cache.data.dtu) {
+    let cacheAge = Date.now() - cache.timestamp;
+
+    // If cache is recent (< 2 minutes), show it instantly
+    if (cacheAge < 2 * 60 * 1000) {
+      widget = createWidget(
+        cache.data.dtu,
+        cache.data.powerDraw,
+        new Date(cache.timestamp)
+      );
+
+      // Show widget immediately
+      if (config.runsInWidget) {
+        Script.setWidget(widget);
+      } else {
+        widget.presentSmall();
+      }
+
+      // Update cache in background for next refresh
+      backgroundRefresh();
+      Script.complete();
+      return;
+    }
+  }
+
+  // No cache or cache too old: Fetch fresh data
+  try {
+    let promises = [
+      fetchData(settings.dtuApiUrl, settings.dtuUser, settings.dtuPass, 3)
+    ];
+
+    if (settings.showPowerDraw) {
+      promises.push(
+        fetchData(
+          settings.powermeter === "tasmota"
+            ? settings.tasmotaApiUrl
+            : settings.shellyApiUrl,
+          settings.powermeter === "tasmota"
+            ? settings.tasmotaUser
+            : settings.shellyUser,
+          settings.powermeter === "tasmota"
+            ? settings.tasmotaPass
+            : settings.shellyPass,
+          3
+        )
+      );
+    }
+
+    let results = await Promise.all(promises);
+    let dtuResult = results[0];
+    let powerDrawResult = results.length > 1 ? results[1] : null;
+
+    if (dtuResult.success) {
       let data = dtuResult.data;
       let powerDrawData = powerDrawResult && powerDrawResult.success ? powerDrawResult.data : null;
 
-      // Save to cache
       saveCache({
         dtu: data,
         powerDraw: powerDrawData
@@ -316,17 +410,15 @@ async function run() {
 
       widget = createWidget(data, powerDrawData);
     } else {
-      // DTU fetch failed, try to use cached data
-      let cache = loadCache();
+      // Fetch failed, use stale cache if available
       if (cache && cache.data && cache.data.dtu) {
-        console.log("Using cached data due to fetch error");
+        console.log("Using stale cache due to fetch error");
         widget = createWidget(
           cache.data.dtu,
           cache.data.powerDraw,
           new Date(cache.timestamp)
         );
 
-        // Add warning that we're showing old data
         let warningStack = widget.addStack();
         warningStack.layoutVertically();
         warningStack.addSpacer(2);
@@ -334,7 +426,6 @@ async function run() {
         warningText.textColor = Color.orange();
         warningText.font = Font.systemFont(8);
       } else {
-        // No cache available
         widget = createErrorWidget(
           "Verbindung fehlgeschlagen\nund kein Cache verfügbar"
         );
@@ -343,8 +434,6 @@ async function run() {
   } catch (error) {
     console.error(`Unexpected error: ${error}`);
 
-    // Try to load from cache as fallback
-    let cache = loadCache();
     if (cache && cache.data && cache.data.dtu) {
       widget = createWidget(
         cache.data.dtu,
