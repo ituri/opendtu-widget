@@ -30,7 +30,8 @@ async function loadSettings() {
 
   let settings;
   if (fm.fileExists(iCloudPath)) {
-    let raw = await fm.readString(iCloudPath);
+    await fm.downloadFileFromiCloud(iCloudPath);
+    let raw = fm.readString(iCloudPath);
     settings = JSON.parse(raw);
   } else {
     // First time run, create default settings
