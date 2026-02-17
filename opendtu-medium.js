@@ -15,8 +15,8 @@ async function loadSettings() {
       let cached = JSON.parse(fmLocal.readString(cachePath));
       let age = Date.now() - cached.timestamp;
 
-      // If cache is fresh (< 5 minutes), use it
-      if (age < SETTINGS_CACHE_DURATION) {
+      // If cache is fresh (< 5 minutes) and valid, use it
+      if (age < SETTINGS_CACHE_DURATION && cached.settings) {
         return cached.settings;
       }
     } catch (error) {
