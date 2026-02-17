@@ -32,7 +32,7 @@ async function loadSettings() {
   if (fm.fileExists(iCloudPath)) {
     await fm.downloadFileFromiCloud(iCloudPath);
     let raw = fm.readString(iCloudPath);
-    settings = JSON.parse(raw);
+    if (raw) settings = JSON.parse(raw);
   } else {
     // First time run, create default settings
     settings = {
@@ -370,6 +370,17 @@ async function backgroundRefresh() {
 
 // Main script with Optimistic UI
 async function run() {
+  if (!settings) {
+    let widget = createErrorWidget("opendtu-config.json konnte\nnicht geladen werden.\nBitte iCloud-Verbindung prüfen.");
+    if (config.runsInWidget) {
+      Script.setWidget(widget);
+    } else {
+      widget.presentMedium();
+    }
+    Script.complete();
+    return;
+  }
+
   let widget;
   let cache = loadCache();
 
