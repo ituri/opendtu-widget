@@ -129,9 +129,9 @@ function getPowerDrawValue(powerDrawData) {
     if (
       powerDrawData &&
       powerDrawData.StatusSNS &&
-      powerDrawData.StatusSNS.hasOwnProperty("")
+      powerDrawData.StatusSNS.HICHI
     ) {
-      return parseFloat(powerDrawData.StatusSNS[""]["current"]) || 0;
+      return parseFloat(powerDrawData.StatusSNS.HICHI.current) || 0;
     }
   } else if (settings.powermeter === "shelly") {
     // Handle Shelly API response structure
